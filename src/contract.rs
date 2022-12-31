@@ -20,9 +20,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    // Define the owner address for the contract
-    let owner;
-
     // Current state for the auction is an "open" status and no bid
     STATE.save(
         deps.storage,
@@ -34,10 +31,10 @@ pub fn instantiate(
 
     // If the owner is not passed to the instantiate function, use the sender
     // address as the owner one
-    match msg.owner {
-        Some(str_owner) => owner = deps.api.addr_validate(&str_owner)?,
-        None => owner = info.sender,
-    }
+    let owner = match msg.owner {
+        Some(str_owner) => deps.api.addr_validate(&str_owner)?,
+        None => info.sender,
+    };
 
     // The configuration for the auction corresponds to:
     //  - passed denom for the bid tokens;
@@ -48,7 +45,7 @@ pub fn instantiate(
         deps.storage,
         &Config {
             denom: msg.denom,
-            owner: owner,
+            owner,
             description: msg.description,
         },
     )?;
