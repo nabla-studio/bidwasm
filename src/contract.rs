@@ -20,6 +20,9 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    // If commission is passed as an argument, use it. Otherwise, use 0
+    let commission = msg.commission.unwrap_or_default();
+
     // Current state for the auction is an "open" status and no bid
     STATE.save(
         deps.storage,
@@ -47,6 +50,7 @@ pub fn instantiate(
             denom: msg.denom,
             owner,
             description: msg.description,
+            commission,
         },
     )?;
 
@@ -67,6 +71,3 @@ pub fn execute(
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     unimplemented!()
 }
-
-#[cfg(test)]
-mod tests {}

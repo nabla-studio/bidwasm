@@ -18,6 +18,8 @@ pub struct Config {
     pub owner: Addr,
     // auction description
     pub description: String,
+    // commission on each valid bid
+    pub commission: u64,
 }
 
 // Auction Current status

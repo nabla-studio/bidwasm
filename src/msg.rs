@@ -9,6 +9,7 @@ pub struct InstantiateMsg {
     pub denom: String,
     pub owner: Option<String>,
     pub description: String,
+    pub commission: Option<u64>,
 }
 
 #[cw_serde]

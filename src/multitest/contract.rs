@@ -29,8 +29,10 @@ impl BidwasmContract {
         owner: impl Into<Option<&'a Addr>>,
         denom: &str,
         description: &str,
+        commission: impl Into<Option<u64>>,
     ) -> StdResult<Self> {
         let owner = owner.into();
+        let commission = commission.into();
 
         app.instantiate_contract(
             code_id,
@@ -39,6 +41,7 @@ impl BidwasmContract {
                 denom: denom.to_string(),
                 owner: owner.map(Addr::to_string),
                 description: description.to_string(),
+                commission,
             },
             &[],
             label,
