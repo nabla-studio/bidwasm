@@ -29,7 +29,7 @@ impl BidwasmContract {
         owner: impl Into<Option<&'a Addr>>,
         denom: &str,
         description: &str,
-        commission: impl Into<Option<u64>>,
+        commission: impl Into<Option<u128>>,
     ) -> StdResult<Self> {
         let owner = owner.into();
         let commission = commission.into();

@@ -5,7 +5,7 @@ use crate::state::{Config, State, Status, CONFIG, STATE};
 
 use super::contract::BidwasmContract;
 
-const ATOM: &str = "atom";
+const UATOM: &str = "uatom";
 
 // START --> Auction Opening Tests
 
@@ -26,7 +26,7 @@ fn open_auction_with_owner() {
         &sender,
         "Bidwasm contract",
         &owner,
-        ATOM,
+        UATOM,
         "Supercomputer #2207 bidding",
         500_000,
     )
@@ -51,7 +51,7 @@ fn open_auction_with_owner() {
     assert_eq!(
         config,
         Config {
-            denom: ATOM.to_string(),
+            denom: UATOM.to_string(),
             owner,
             description: "Supercomputer #2207 bidding".to_string(),
             commission: 500_000
@@ -75,7 +75,7 @@ fn open_auction_without_owner() {
         &owner,
         "Bidwasm contract",
         None,
-        ATOM,
+        UATOM,
         "Supercomputer #2207 bidding",
         500_000,
     )
@@ -101,7 +101,7 @@ fn open_auction_without_owner() {
     assert_eq!(
         config,
         Config {
-            denom: ATOM.to_string(),
+            denom: UATOM.to_string(),
             owner,
             description: "Supercomputer #2207 bidding".to_string(),
             commission: 500_000
@@ -125,7 +125,7 @@ fn open_auction_without_commission() {
         &owner,
         "Bidwasm contract",
         &owner,
-        ATOM,
+        UATOM,
         "Supercomputer #2207 bidding",
         None,
     )
@@ -151,7 +151,7 @@ fn open_auction_without_commission() {
     assert_eq!(
         config,
         Config {
-            denom: ATOM.to_string(),
+            denom: UATOM.to_string(),
             owner,
             description: "Supercomputer #2207 bidding".to_string(),
             commission: 0
