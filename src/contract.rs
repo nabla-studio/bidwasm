@@ -4,6 +4,7 @@ use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult}
 // use cw2::set_contract_version;
 
 use crate::error::ContractError;
+use crate::exec;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{Config, State, Status, CONFIG, STATE};
 
@@ -59,12 +60,16 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _msg: ExecuteMsg,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    unimplemented!()
+    use ExecuteMsg::Bid;
+
+    match msg {
+        Bid {} => exec::bid(deps, env, info),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

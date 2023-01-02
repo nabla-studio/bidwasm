@@ -1,9 +1,10 @@
-use cosmwasm_std::{Addr, StdResult};
+use cosmwasm_std::{Addr, Coin, StdResult};
 use cw_multi_test::{App, ContractWrapper, Executor};
 
 use crate::{
     contract::{execute, instantiate, query},
-    msg::InstantiateMsg,
+    msg::{ExecuteMsg, InstantiateMsg},
+    ContractError,
 };
 
 pub struct BidwasmContract(Addr);
@@ -49,6 +50,14 @@ impl BidwasmContract {
         )
         .map(BidwasmContract)
         .map_err(|err| err.downcast().unwrap())
+    }
+
+    // Perform bidding to the auction
+    #[track_caller]
+    pub fn bid(&self, app: &mut App, sender: &Addr, funds: &[Coin]) -> Result<(), ContractError> {
+        app.execute_contract(sender.clone(), self.0.clone(), &ExecuteMsg::Bid {}, funds)
+            .map(|_| ())
+            .map_err(|err| err.downcast().unwrap())
     }
 }
 

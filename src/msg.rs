@@ -12,8 +12,11 @@ pub struct InstantiateMsg {
     pub commission: Option<u128>,
 }
 
+// Executing the actions in the smart contract
 #[cw_serde]
-pub enum ExecuteMsg {}
+pub enum ExecuteMsg {
+    Bid {},
+}
 
 #[cw_serde]
 #[derive(QueryResponses)]
