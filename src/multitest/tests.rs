@@ -201,10 +201,10 @@ fn owner_cannot_bid() {
     // Verify that the contract fails if the contract owner bid to his own
     // auction
     assert_eq!(
+        err,
         ContractError::InvalidAction {
             owner: owner.to_string()
-        },
-        err
+        }
     );
 
     // No funds should be moved
@@ -252,11 +252,11 @@ fn insufficient_funds_bid() {
     // Verify that the contract fails if the sender sends lower funds than
     // required for the commission by the auction
     assert_eq!(
+        err,
         ContractError::InsufficientFundsForCommission {
             funds: Uint128::new(100_000),
             commission: Uint128::new(500_000)
-        },
-        err
+        }
     );
 
     // No funds should be moved
@@ -303,7 +303,6 @@ fn simple_bid_no_commission() {
         .bid(&mut app, &sender, &coins(3_500_000, UATOM))
         .unwrap();
 
-    // let bids = BIDS.query(&app.wrap(), contract.addr().clone()).unwrap();
     let bid = BIDS
         .query(&app.wrap(), contract.addr().clone(), &sender)
         .unwrap();
@@ -357,7 +356,6 @@ fn simple_bid() {
         .bid(&mut app, &sender, &coins(3_500_000, UATOM))
         .unwrap();
 
-    // let bids = BIDS.query(&app.wrap(), contract.addr().clone()).unwrap();
     let bid = BIDS
         .query(&app.wrap(), contract.addr().clone(), &sender)
         .unwrap();
@@ -382,3 +380,200 @@ fn simple_bid() {
 }
 
 // END --> Bidding Tests
+
+// START --> Close Tests
+
+#[test]
+fn close_auction() {
+    // Define participant
+    let owner = Addr::unchecked("owner");
+
+    let mut app = App::default();
+
+    let code_id = BidwasmContract::store_code(&mut app);
+
+    // Instantiate contract with owner different than sender
+    let contract = BidwasmContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Bidwasm contract",
+        &owner,
+        UATOM,
+        "Supercomputer #2207 bidding",
+        500_000,
+    )
+    .unwrap();
+
+    // Check the status is open
+    let state = STATE.query(&app.wrap(), contract.addr().clone()).unwrap();
+    assert_eq!(
+        state,
+        State {
+            current_status: Status::Open,
+            highest_bid: None
+        }
+    );
+
+    // Close the auction
+    contract.close(&mut app, &owner, &[]).unwrap();
+
+    // Check the status is closed
+    let state = STATE.query(&app.wrap(), contract.addr().clone()).unwrap();
+    assert_eq!(
+        state,
+        State {
+            current_status: Status::Closed,
+            highest_bid: None
+        }
+    );
+}
+
+#[test]
+fn close_auction_after_bid() {
+    // Define participant
+    let owner = Addr::unchecked("owner");
+    let sender = Addr::unchecked("sender");
+
+    let mut app = App::new(|router, _api, storage| {
+        router
+            .bank
+            .init_balance(storage, &sender, coins(4_000_000, UATOM))
+            .unwrap();
+    });
+
+    let code_id = BidwasmContract::store_code(&mut app);
+
+    // Instantiate contract with owner different than sender
+    let contract = BidwasmContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Bidwasm contract",
+        &owner,
+        UATOM,
+        "Supercomputer #2207 bidding",
+        500_000,
+    )
+    .unwrap();
+
+    // Making a simple bid
+    contract
+        .bid(&mut app, &sender, &coins(2_000_000, UATOM))
+        .unwrap();
+
+    let bid = BIDS
+        .query(&app.wrap(), contract.addr().clone(), &sender)
+        .unwrap();
+
+    // Check if bid is stored in the state
+    assert_eq!(bid, Some(Uint128::new(1_500_000)));
+
+    // sender should have not any balance
+    assert_eq!(
+        app.wrap().query_all_balances(&sender).unwrap(),
+        coins(2_000_000, UATOM)
+    );
+
+    // owner should have got the commission
+    assert_eq!(
+        app.wrap().query_all_balances(&owner).unwrap(),
+        coins(500_000, UATOM)
+    );
+
+    // contract should store bid minus commission
+    assert_eq!(
+        app.wrap().query_all_balances(contract.addr()).unwrap(),
+        coins(1_500_000, UATOM)
+    );
+
+    // Check the status is open
+    let state = STATE.query(&app.wrap(), contract.addr().clone()).unwrap();
+    assert_eq!(
+        state,
+        State {
+            current_status: Status::Open,
+            highest_bid: Some((sender.clone(), Uint128::new(1_500_000)))
+        }
+    );
+
+    // Close the auction
+    contract.close(&mut app, &owner, &[]).unwrap();
+
+    // Check the status is closed
+    let state = STATE.query(&app.wrap(), contract.addr().clone()).unwrap();
+    assert_eq!(
+        state,
+        State {
+            current_status: Status::Closed,
+            highest_bid: Some((sender.clone(), Uint128::new(1_500_000)))
+        }
+    );
+
+    // Try making another bid after closing the auction
+    let err = contract
+        .bid(&mut app, &sender, &coins(2_000_000, UATOM))
+        .unwrap_err();
+
+    // Verify that the contract fails if the sender bids after the acution is
+    // closed
+    assert_eq!(err, ContractError::ClosedAcution);
+}
+
+#[test]
+fn invalid_close_unauthorized() {
+    // Define participant
+    let owner = Addr::unchecked("owner");
+    let sender = Addr::unchecked("sender");
+
+    let mut app = App::default();
+
+    let code_id = BidwasmContract::store_code(&mut app);
+
+    // Instantiate contract with owner different than sender
+    let contract = BidwasmContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Bidwasm contract",
+        &owner,
+        UATOM,
+        "Supercomputer #2207 bidding",
+        500_000,
+    )
+    .unwrap();
+
+    // Check the status is open
+    let state = STATE.query(&app.wrap(), contract.addr().clone()).unwrap();
+    assert_eq!(
+        state,
+        State {
+            current_status: Status::Open,
+            highest_bid: None
+        }
+    );
+
+    // Try closing the auction from unauthorized account
+    let err = contract.close(&mut app, &sender, &[]).unwrap_err();
+
+    // Verify that the contract fails if the auction is closed by unauthorized
+    // address
+    assert_eq!(
+        err,
+        ContractError::Unauthorized {
+            owner: owner.to_string()
+        }
+    );
+
+    // Check the status is open
+    let state = STATE.query(&app.wrap(), contract.addr().clone()).unwrap();
+    assert_eq!(
+        state,
+        State {
+            current_status: Status::Open,
+            highest_bid: None
+        }
+    );
+}
+
+// END --> Close Tests

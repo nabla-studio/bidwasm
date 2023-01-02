@@ -100,3 +100,31 @@ pub fn bid(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> 
 
     Ok(resp)
 }
+
+pub fn close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+    let owner = CONFIG.load(deps.storage)?.owner;
+
+    let state = STATE.load(deps.storage)?;
+
+    // If auction is already closed, then the action cannot be processed
+    if state.current_status == Status::Closed {
+        return Err(ContractError::ClosedAcution);
+    }
+
+    // Only the owner of the auction can close it
+    if owner != info.sender {
+        return Err(ContractError::Unauthorized {
+            owner: owner.to_string(),
+        });
+    }
+
+    STATE.update(deps.storage, |mut state| -> StdResult<_> {
+        state.current_status = Status::Closed;
+        Ok(state)
+    })?;
+
+    let resp = Response::new()
+        .add_attribute("action", "close")
+        .add_attribute("sender", info.sender.as_str());
+    Ok(resp)
+}

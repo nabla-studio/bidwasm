@@ -65,10 +65,11 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    use ExecuteMsg::Bid;
+    use ExecuteMsg::{Bid, Close};
 
     match msg {
         Bid {} => exec::bid(deps, info),
+        Close {} => exec::close(deps, info),
     }
 }
 
