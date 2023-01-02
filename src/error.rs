@@ -12,7 +12,7 @@ pub enum ContractError {
     #[error("Invalid bid: Contract owner {owner} cannot perform this action")]
     InvalidAction { owner: String },
 
-    #[error("Invalid bid: Auction is already in closed")]
+    #[error("Auction is already closed")]
     ClosedAcution,
 
     #[error(
