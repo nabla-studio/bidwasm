@@ -61,14 +61,14 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     use ExecuteMsg::Bid;
 
     match msg {
-        Bid {} => exec::bid(deps, env, info),
+        Bid {} => exec::bid(deps, info),
     }
 }
 

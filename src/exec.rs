@@ -1,11 +1,11 @@
-use cosmwasm_std::{coins, BankMsg, DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
+use cosmwasm_std::{coins, BankMsg, DepsMut, MessageInfo, Response, StdResult, Uint128};
 
 use crate::{
     state::{Status, BIDS, CONFIG, STATE},
     ContractError,
 };
 
-pub fn bid(deps: DepsMut, _env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn bid(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     let owner = CONFIG.load(deps.storage)?.owner;
     let commission = Uint128::new(CONFIG.load(deps.storage)?.commission);
     let denom = CONFIG.load(deps.storage)?.denom;
