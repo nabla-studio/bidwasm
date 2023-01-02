@@ -105,6 +105,9 @@ pub fn close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError
     let owner = CONFIG.load(deps.storage)?.owner;
 
     let state = STATE.load(deps.storage)?;
+    let denom = CONFIG.load(deps.storage)?.denom;
+
+    let mut resp = Response::new();
 
     // If auction is already closed, then the action cannot be processed
     if state.current_status == Status::Closed {
@@ -118,12 +121,31 @@ pub fn close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError
         });
     }
 
+    // If there exist a maximum bid, we should send it to the contract owner
+    if let Some(highest_bid) = state.highest_bid {
+        let funds: Vec<_> = coins(highest_bid.1.u128(), denom);
+
+        // Create a bank message to send funds to the contract owner
+        let commission_msg = BankMsg::Send {
+            to_address: owner.into_string(),
+            amount: funds,
+        };
+
+        // Update the bid for the sender
+        BIDS.remove(deps.storage, &highest_bid.0);
+
+        resp = resp
+            .add_message(commission_msg)
+            .add_attribute("auction_collection", highest_bid.0.as_str());
+    }
+
+    // Update the state to close the auction
     STATE.update(deps.storage, |mut state| -> StdResult<_> {
         state.current_status = Status::Closed;
         Ok(state)
     })?;
 
-    let resp = Response::new()
+    resp = resp
         .add_attribute("action", "close")
         .add_attribute("sender", info.sender.as_str());
     Ok(resp)

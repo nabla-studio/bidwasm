@@ -510,6 +510,21 @@ fn close_auction_after_bid() {
         }
     );
 
+    // sender should have not any balance
+    assert_eq!(
+        app.wrap().query_all_balances(&sender).unwrap(),
+        coins(2_000_000, UATOM)
+    );
+
+    // owner should have got the commission
+    assert_eq!(
+        app.wrap().query_all_balances(&owner).unwrap(),
+        coins(2_000_000, UATOM)
+    );
+
+    // contract should store bid minus commission
+    assert_eq!(app.wrap().query_all_balances(contract.addr()).unwrap(), &[]);
+
     // Try making another bid after closing the auction
     let err = contract
         .bid(&mut app, &sender, &coins(2_000_000, UATOM))
