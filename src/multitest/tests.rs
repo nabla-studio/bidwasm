@@ -812,4 +812,54 @@ fn invalid_double_retract() {
     // Verify that the contract fails
     assert_eq!(err, ContractError::InvalidRetract);
 }
+
+#[test]
+fn invalid_retract_while_open() {
+    // Define participant
+    let owner = Addr::unchecked("owner");
+    let sender1 = Addr::unchecked("sender1");
+    let sender2 = Addr::unchecked("sender2");
+
+    let mut app = App::new(|router, _api, storage| {
+        router
+            .bank
+            .init_balance(storage, &sender1, coins(4_500_000, UATOM))
+            .unwrap();
+        router
+            .bank
+            .init_balance(storage, &sender2, coins(7_500_000, UATOM))
+            .unwrap();
+    });
+
+    let code_id = BidwasmContract::store_code(&mut app);
+
+    // Instantiate contract
+    let contract = BidwasmContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Bidwasm contract",
+        None,
+        UATOM,
+        "Supercomputer #2207 bidding",
+        500_000,
+    )
+    .unwrap();
+
+    // Sender1 make a bid of 4_000_000
+    contract
+        .bid(&mut app, &sender1, &coins(4_500_000, UATOM))
+        .unwrap();
+
+    // Sender2 make a bid of 7_000_000
+    contract
+        .bid(&mut app, &sender2, &coins(7_500_000, UATOM))
+        .unwrap();
+
+    // Sender2 tries retracting funds even if he won the auction
+    let err = contract.retract(&mut app, &sender2, None).unwrap_err();
+
+    // Verify that the contract fails
+    assert_eq!(err, ContractError::OpenAcution);
+}
 // END --> Retract Tests
