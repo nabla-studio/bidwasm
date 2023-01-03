@@ -1172,3 +1172,135 @@ fn query_no_winner() {
     assert!(err.to_string().contains("The auction has not any bid"));
 }
 // END --> Query Tests
+
+// START --> Complete Test
+#[test]
+fn complete_test() {
+    // Define participants
+    let owner = Addr::unchecked("owner");
+    let alex = Addr::unchecked("alex");
+    let ann = Addr::unchecked("ann");
+    let ann_friend = Addr::unchecked("ann_friend");
+
+    let mut app = App::new(|router, _api, storage| {
+        router
+            .bank
+            .init_balance(storage, &alex, coins(20_000_000, UATOM))
+            .unwrap();
+        router
+            .bank
+            .init_balance(storage, &ann, coins(20_000_000, UATOM))
+            .unwrap();
+    });
+
+    let code_id = BidwasmContract::store_code(&mut app);
+
+    // Instantiate contract
+    let contract = BidwasmContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Bidwasm contract",
+        None,
+        UATOM,
+        "Supercomputer #2207 bidding",
+        None,
+    )
+    .unwrap();
+
+    // Alex is sending bid {} message with 15 atoms
+    contract
+        .bid(&mut app, &alex, &coins(15_000_000, UATOM))
+        .unwrap();
+
+    // The highest bid right now is 15 atoms by Alex
+    let resp = contract.query_highest_bid(&app).unwrap();
+    assert_eq!(
+        resp,
+        BidResp {
+            address: alex.clone(),
+            amount: Uint128::new(15_000_000)
+        }
+    );
+
+    // Now Ann is sending bid {} message with 17 atoms
+    contract
+        .bid(&mut app, &ann, &coins(17_000_000, UATOM))
+        .unwrap();
+
+    // The highest bid is 17 atoms by Ann
+    let resp = contract.query_highest_bid(&app).unwrap();
+    assert_eq!(
+        resp,
+        BidResp {
+            address: ann.clone(),
+            amount: Uint128::new(17_000_000)
+        }
+    );
+
+    // and total bid by Alex is 15 atoms
+    let resp = contract.query_total_bid(&app, &alex).unwrap();
+    assert_eq!(resp, Uint128::new(15_000_000));
+
+    // Now Ann is sending another bid {} message with 2 atoms
+    contract
+        .bid(&mut app, &ann, &coins(2_000_000, UATOM))
+        .unwrap();
+
+    // Now the highest bid is 19 atoms by Ann
+    let resp = contract.query_highest_bid(&app).unwrap();
+    assert_eq!(
+        resp,
+        BidResp {
+            address: ann.clone(),
+            amount: Uint128::new(19_000_000)
+        }
+    );
+
+    // and total of Alex is 15 atoms
+    let resp = contract.query_total_bid(&app, &alex).unwrap();
+    assert_eq!(resp, Uint128::new(15_000_000));
+
+    // Then Alex sends bid {} message with 1 atom - this message fails, as it
+    // would leave Alex at 16 atoms bid total, which is not the highest right
+    // now. He has to send more than 5 atoms
+    contract
+        .bid(&mut app, &alex, &coins(1_000_000, UATOM))
+        .unwrap_err();
+
+    // Alex sends another bid {} with 5 atoms
+    contract
+        .bid(&mut app, &alex, &coins(5_000_000, UATOM))
+        .unwrap();
+
+    // It makes the highest bid being 20 atoms by Alex
+    let resp = contract.query_highest_bid(&app).unwrap();
+    assert_eq!(
+        resp,
+        BidResp {
+            address: alex.clone(),
+            amount: Uint128::new(20_000_000)
+        }
+    );
+
+    // and Ann has total of 19 atoms bid
+    let resp = contract.query_total_bid(&app, &ann).unwrap();
+    assert_eq!(resp, Uint128::new(19_000_000));
+
+    // The close {} is send by contract owner
+    contract.close(&mut app, &owner).unwrap();
+    assert_eq!(
+        app.wrap().query_all_balances(&owner).unwrap(),
+        coins(20_000_000, UATOM)
+    );
+
+    // Ann can claim her atoms back calling retract {} message, optionally
+    // putting a receiver field there to point where funds should be send back
+    // to.
+    contract.retract(&mut app, &ann, &ann_friend).unwrap();
+    assert_eq!(
+        app.wrap().query_all_balances(&ann_friend).unwrap(),
+        coins(19_000_000, UATOM)
+    );
+}
+// END --> Complete Test
