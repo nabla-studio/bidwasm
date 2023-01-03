@@ -416,7 +416,7 @@ fn close_auction() {
     );
 
     // Close the auction
-    contract.close(&mut app, &owner, &[]).unwrap();
+    contract.close(&mut app, &owner).unwrap();
 
     // Check the status is closed
     let state = STATE.query(&app.wrap(), contract.addr().clone()).unwrap();
@@ -498,7 +498,7 @@ fn close_auction_after_bid() {
     );
 
     // Close the auction
-    contract.close(&mut app, &owner, &[]).unwrap();
+    contract.close(&mut app, &owner).unwrap();
 
     // Check the status is closed
     let state = STATE.query(&app.wrap(), contract.addr().clone()).unwrap();
@@ -569,7 +569,7 @@ fn invalid_close_unauthorized() {
     );
 
     // Try closing the auction from unauthorized account
-    let err = contract.close(&mut app, &sender, &[]).unwrap_err();
+    let err = contract.close(&mut app, &sender).unwrap_err();
 
     // Verify that the contract fails if the auction is closed by unauthorized
     // address

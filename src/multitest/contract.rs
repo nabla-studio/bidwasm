@@ -62,8 +62,8 @@ impl BidwasmContract {
 
     // Closing the auction
     #[track_caller]
-    pub fn close(&self, app: &mut App, sender: &Addr, funds: &[Coin]) -> Result<(), ContractError> {
-        app.execute_contract(sender.clone(), self.0.clone(), &ExecuteMsg::Close {}, funds)
+    pub fn close(&self, app: &mut App, sender: &Addr) -> Result<(), ContractError> {
+        app.execute_contract(sender.clone(), self.0.clone(), &ExecuteMsg::Close {}, &[])
             .map(|_| ())
             .map_err(|err| err.downcast().unwrap())
     }
