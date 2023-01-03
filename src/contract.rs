@@ -1,12 +1,12 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 // use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::exec;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{Config, State, Status, CONFIG, STATE};
+use crate::{exec, query};
 
 /*
 // version info for migration info
@@ -75,6 +75,11 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
-    unimplemented!()
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::TotalBid { address } => to_binary(&query::total_bid(deps, address)?),
+        QueryMsg::HighestBid {} => to_binary(&query::highest_bid(deps)?),
+        QueryMsg::IsClosed {} => to_binary(&query::is_closed(deps)?),
+        QueryMsg::Winner {} => to_binary(&query::winner(deps)?),
+    }
 }

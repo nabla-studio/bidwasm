@@ -2,6 +2,7 @@ use cosmwasm_std::{coins, Addr, Uint128};
 use cw_multi_test::App;
 
 use crate::{
+    msg::{BidResp, QueryMsg},
     state::{Config, State, Status, BIDS, CONFIG, STATE},
     ContractError,
 };
@@ -935,3 +936,199 @@ fn invalid_retract_while_open() {
     assert_eq!(err, ContractError::OpenAcution);
 }
 // END --> Retract Tests
+
+// START --> Query Tests
+#[test]
+fn query_total_bid() {
+    // Define participant
+    let owner = Addr::unchecked("owner");
+    let sender = Addr::unchecked("sender");
+
+    let mut app = App::new(|router, _api, storage| {
+        router
+            .bank
+            .init_balance(storage, &sender, coins(7_000_000, UATOM))
+            .unwrap();
+    });
+
+    let code_id = BidwasmContract::store_code(&mut app);
+
+    // Instantiate contract
+    let contract = BidwasmContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Bidwasm contract",
+        None,
+        UATOM,
+        "Supercomputer #2207 bidding",
+        500_000,
+    )
+    .unwrap();
+
+    // Making a simple bid
+    contract
+        .bid(&mut app, &sender, &coins(3_500_000, UATOM))
+        .unwrap();
+
+    let resp: Uint128 = app
+        .wrap()
+        .query_wasm_smart(
+            contract.addr(),
+            &QueryMsg::TotalBid {
+                address: sender.to_string(),
+            },
+        )
+        .unwrap();
+
+    assert_eq!(resp, Uint128::new(3_000_000));
+
+    // Making another bid
+    contract
+        .bid(&mut app, &sender, &coins(3_500_000, UATOM))
+        .unwrap();
+
+    // Verify total bid for sender
+    let resp = contract.query_total_bid(&app, &sender).unwrap();
+    assert_eq!(resp, Uint128::new(6_000_000));
+}
+
+#[test]
+fn query_highest_bid() {
+    // Define participant
+    let owner = Addr::unchecked("owner");
+    let sender1 = Addr::unchecked("sender1");
+    let sender2 = Addr::unchecked("sender2");
+
+    let mut app = App::new(|router, _api, storage| {
+        router
+            .bank
+            .init_balance(storage, &sender1, coins(4_500_000, UATOM))
+            .unwrap();
+        router
+            .bank
+            .init_balance(storage, &sender2, coins(7_500_000, UATOM))
+            .unwrap();
+    });
+
+    let code_id = BidwasmContract::store_code(&mut app);
+
+    // Instantiate contract
+    let contract = BidwasmContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Bidwasm contract",
+        None,
+        UATOM,
+        "Supercomputer #2207 bidding",
+        500_000,
+    )
+    .unwrap();
+
+    // Sender1 make a bid of 4_000_000
+    contract
+        .bid(&mut app, &sender1, &coins(4_500_000, UATOM))
+        .unwrap();
+
+    // Sender2 make a bid of 7_000_000
+    contract
+        .bid(&mut app, &sender2, &coins(7_500_000, UATOM))
+        .unwrap();
+
+    // Verify highest bid query
+    let resp = contract.query_highest_bid(&app).unwrap();
+    assert_eq!(
+        resp,
+        BidResp {
+            address: sender2,
+            amount: Uint128::new(7_000_000)
+        }
+    );
+}
+
+#[test]
+fn query_status() {
+    // Define participant
+    let owner = Addr::unchecked("owner");
+
+    let mut app = App::default();
+
+    let code_id = BidwasmContract::store_code(&mut app);
+
+    // Instantiate contract
+    let contract = BidwasmContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Bidwasm contract",
+        None,
+        UATOM,
+        "Supercomputer #2207 bidding",
+        500_000,
+    )
+    .unwrap();
+
+    // Verify the is_closed query to check that the auction is not closed
+    let resp = contract.query_is_closed(&app).unwrap();
+    assert_eq!(resp, false);
+
+    // Close the auction
+    contract.close(&mut app, &owner).unwrap();
+
+    // Verify the is_closed query to check that the auction is now closed
+    let resp = contract.query_is_closed(&app).unwrap();
+    assert_eq!(resp, true);
+}
+
+#[test]
+fn query_winner() {
+    // Define participants
+    let owner = Addr::unchecked("owner");
+    let sender = Addr::unchecked("sender");
+
+    let mut app = App::new(|router, _api, storage| {
+        router
+            .bank
+            .init_balance(storage, &sender, coins(4_500_000, UATOM))
+            .unwrap();
+    });
+
+    let code_id = BidwasmContract::store_code(&mut app);
+
+    // Instantiate contract
+    let contract = BidwasmContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Bidwasm contract",
+        None,
+        UATOM,
+        "Supercomputer #2207 bidding",
+        500_000,
+    )
+    .unwrap();
+
+    // Sender1 make a bid of 4_000_000
+    contract
+        .bid(&mut app, &sender, &coins(4_500_000, UATOM))
+        .unwrap();
+
+    // Verify the winner query returns an error if the auction is yet open
+    // let err = contract.query_winner(&app).unwrap_err();
+    // assert_eq!(err);
+
+    // Close the auction
+    contract.close(&mut app, &owner).unwrap();
+
+    // Verify the is_closed query to check that the auction is now closed
+    let resp = contract.query_winner(&app).unwrap();
+    assert_eq!(
+        resp,
+        BidResp {
+            address: sender,
+            amount: Uint128::new(4_000_000)
+        }
+    );
+}
+// END --> Query Tests

@@ -1,4 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{Addr, Uint128};
 
 // Instantiate message contains information about the auction itself:
 // - denom for the token bids
@@ -22,4 +23,19 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 #[derive(QueryResponses)]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    #[returns(u128)]
+    TotalBid { address: String },
+    #[returns(BidResp)]
+    HighestBid {},
+    #[returns(bool)]
+    IsClosed {},
+    #[returns(BidResp)]
+    Winner {},
+}
+
+#[cw_serde]
+pub struct BidResp {
+    pub address: Addr,
+    pub amount: Uint128,
+}

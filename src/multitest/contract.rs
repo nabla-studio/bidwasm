@@ -1,9 +1,9 @@
-use cosmwasm_std::{Addr, Coin, StdResult};
+use cosmwasm_std::{Addr, Coin, StdResult, Uint128};
 use cw_multi_test::{App, ContractWrapper, Executor};
 
 use crate::{
     contract::{execute, instantiate, query},
-    msg::{ExecuteMsg, InstantiateMsg},
+    msg::{BidResp, ExecuteMsg, InstantiateMsg, QueryMsg},
     ContractError,
 };
 
@@ -88,6 +88,30 @@ impl BidwasmContract {
         )
         .map(|_| ())
         .map_err(|err| err.downcast().unwrap())
+    }
+
+    pub fn query_total_bid(&self, app: &App, address: &Addr) -> StdResult<Uint128> {
+        app.wrap().query_wasm_smart(
+            self.0.clone(),
+            &QueryMsg::TotalBid {
+                address: address.to_string(),
+            },
+        )
+    }
+
+    pub fn query_highest_bid(&self, app: &App) -> StdResult<BidResp> {
+        app.wrap()
+            .query_wasm_smart(self.0.clone(), &QueryMsg::HighestBid {})
+    }
+
+    pub fn query_is_closed(&self, app: &App) -> StdResult<bool> {
+        app.wrap()
+            .query_wasm_smart(self.0.clone(), &QueryMsg::IsClosed {})
+    }
+
+    pub fn query_winner(&self, app: &App) -> StdResult<BidResp> {
+        app.wrap()
+            .query_wasm_smart(self.0.clone(), &QueryMsg::Winner {})
     }
 }
 
