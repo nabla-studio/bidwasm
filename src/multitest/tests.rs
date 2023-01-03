@@ -1026,6 +1026,10 @@ fn query_highest_bid() {
     )
     .unwrap();
 
+    // Verify the highest_bid query returns an error if there is not any bid
+    let err = contract.query_highest_bid(&app).unwrap_err();
+    assert!(err.to_string().contains("The auction has not any bid"));
+
     // Sender1 make a bid of 4_000_000
     contract
         .bid(&mut app, &sender1, &coins(4_500_000, UATOM))
@@ -1115,8 +1119,8 @@ fn query_winner() {
         .unwrap();
 
     // Verify the winner query returns an error if the auction is yet open
-    // let err = contract.query_winner(&app).unwrap_err();
-    // assert_eq!(err);
+    let err = contract.query_winner(&app).unwrap_err();
+    assert!(err.to_string().contains("The auction is yet open"));
 
     // Close the auction
     contract.close(&mut app, &owner).unwrap();
@@ -1130,5 +1134,41 @@ fn query_winner() {
             amount: Uint128::new(4_000_000)
         }
     );
+}
+
+#[test]
+fn query_no_winner() {
+    // Define participants
+    let owner = Addr::unchecked("owner");
+    let sender = Addr::unchecked("sender");
+
+    let mut app = App::new(|router, _api, storage| {
+        router
+            .bank
+            .init_balance(storage, &sender, coins(4_500_000, UATOM))
+            .unwrap();
+    });
+
+    let code_id = BidwasmContract::store_code(&mut app);
+
+    // Instantiate contract
+    let contract = BidwasmContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Bidwasm contract",
+        None,
+        UATOM,
+        "Supercomputer #2207 bidding",
+        500_000,
+    )
+    .unwrap();
+
+    // Close the auction
+    contract.close(&mut app, &owner).unwrap();
+
+    // Verify the winner query returns an error if the auction has not any bid
+    let err = contract.query_winner(&app).unwrap_err();
+    assert!(err.to_string().contains("The auction has not any bid"));
 }
 // END --> Query Tests
