@@ -1,99 +1,81 @@
-# CosmWasm Starter Pack
+bidwasm
+&middot;
+![GitHub](https://img.shields.io/github/license/giorgionocera/bidwasm)
+![GitHub last commit](https://img.shields.io/github/last-commit/giorgionocera/bidwasm)
+=====
 
-This is a template to build smart contracts in Rust to run inside a
-[Cosmos SDK](https://github.com/cosmos/cosmos-sdk) module on all chains that enable it.
-To understand the framework better, please read the overview in the
-[cosmwasm repo](https://github.com/CosmWasm/cosmwasm/blob/master/README.md),
-and dig into the [cosmwasm docs](https://www.cosmwasm.com).
-This assumes you understand the theory and just want to get coding.
+A smart contract for bidding procedure 
 
-## Creating a new repo from template
+## 🎰 What is bidwasm?
+It is a smart contract to enable bidding procedure functionalities written in 
+the Rust language to run inside a Cosmos SDK module on all chains enabling it.
+It is my final assignment for the CosmWasm Academy project.
 
-Assuming you have a recent version of Rust and Cargo installed
-(via [rustup](https://rustup.rs/)),
-then the following should get you a new repo to start a contract:
+## 🎯 Requirements (from the Assignment)
+At instantion, a user opens a bid for some offchain commodity. Bid will be 
+happening using only single native token (e.g., ATOM). Contract owner is 
+optionally provided by its creator - if missing, contract creator is considered
+its owner.
 
-Install [cargo-generate](https://github.com/ashleygwilliams/cargo-generate) and cargo-run-script.
-Unless you did that before, run this line now:
+After contract is instantiated, any user other than the contract owner can 
+raise his bid by sending tokens to the contract with the `bid {}` message. When
+the message is called, part of the tokens send are immediately considered 
+bidding commission and should be transferred to contract owner. It is up to you
+to figure out how to calculate commission.
 
-```sh
-cargo install cargo-generate --features vendored-openssl
-cargo install cargo-run-script
-```
+The total bid of the user is considered to be a sum of all bids performed minus
+all the commissions. When user raises his bid, it should success only if his 
+total bid is the highest of all other users bids. If it is less or the same as
+the highest, bidding should fail.
 
-Now, use it to create your new contract.
-Go to the folder in which you want to place it and run:
+Owner can `close {}` the bidding at any time. When the bidding is closed, 
+address with the highest total bid is considered the bidding winner. The whole bidding of his is transferred to the contract owner.
 
-**Latest**
+After the bidding is closed, everyone who bid and didn't win the bidding, can
+`retract {}` all his funds. Additionally the retract message should have an 
+optional friend receiver being an address where the sender biddings should be 
+send. So `retract {}` sends all senders bids (minus commissions) to his 
+account. The `retract { "receiver": "addr" }` should send all the sender bids 
+to the `"addr"` account.
 
-```sh
-cargo generate --git https://github.com/CosmWasm/cw-template.git --name PROJECT_NAME
-```
+Additionally - all the information kept on the contract should be queryable in
+reasonable manner. The most important queries are: 
+- the given addr total bid;
+- the highest bid at the current time (who and how much);
+- if the bidding is closed;
+- who won the bid (if it is closed).
 
-For cloning minimal code repo:
+The contract should contain some tests using multitests framework, but I do not
+expect any particular coverage - 2-3 main flow tests should be enough.
 
-```sh
-cargo generate --git https://github.com/CosmWasm/cw-template.git --name PROJECT_NAME -d minimal=true
-```
+## 🗣 Example
+There is the bidding created at `bidding_contract` address. **Alex** is sending
+`bid {}` message with **15 atoms**. The highest bid right now is *15 atoms by 
+Alex*. Now **Ann** is sending `bid {}` message with **17 atoms**. The highest 
+bid is *17 atoms by Ann*, and *total bid by alex is 15 atoms*. Now **Ann** is 
+sending another `bid {}` message with **2 atoms**. Now the highest bid is *19 
+atoms by Ann*, and *total of Alex is 15 atoms*. Then **Alex** sends `bid {}`
+message with **1 atom** - this message fails, as it would leave **Alex** at *16 
+atoms* bid total, which is not the highest right now. He has to send more than 
+5 atoms. Alex sends another `bid {}` with **5 atoms**. It makes the highest bid
+being *20 atoms by Alex*, and *Ann has total of 19 atoms bid*. The `close {}` 
+is send by **contract owner** - **Alex wins** the bid, **20 atoms are send to 
+bid owner** from `bidding_contract`. **Ann can claim her atoms back** calling
+`retract {}` message, optionally putting a receiver field there to point where
+funds should be send back to.
 
-**Older Version**
+## 📜 License
 
-Pass version as branch flag:
+Copyright © 2023 Giorgio Nocera. All rights reserved.
 
-```sh
-cargo generate --git https://github.com/CosmWasm/cw-template.git --branch <version> --name PROJECT_NAME
-```
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-Example:
+    http://www.apache.org/licenses/LICENSE-2.0
 
-```sh
-cargo generate --git https://github.com/CosmWasm/cw-template.git --branch 0.16 --name PROJECT_NAME
-```
-
-You will now have a new folder called `PROJECT_NAME` (I hope you changed that to something else)
-containing a simple working contract and build system that you can customize.
-
-## Create a Repo
-
-After generating, you have a initialized local git repo, but no commits, and no remote.
-Go to a server (eg. github) and create a new upstream repo (called `YOUR-GIT-URL` below).
-Then run the following:
-
-```sh
-# this is needed to create a valid Cargo.lock file (see below)
-cargo check
-git branch -M main
-git add .
-git commit -m 'Initial Commit'
-git remote add origin YOUR-GIT-URL
-git push -u origin main
-```
-
-## CI Support
-
-We have template configurations for both [GitHub Actions](.github/workflows/Basic.yml)
-and [Circle CI](.circleci/config.yml) in the generated project, so you can
-get up and running with CI right away.
-
-One note is that the CI runs all `cargo` commands
-with `--locked` to ensure it uses the exact same versions as you have locally. This also means
-you must have an up-to-date `Cargo.lock` file, which is not auto-generated.
-The first time you set up the project (or after adding any dep), you should ensure the
-`Cargo.lock` file is updated, so the CI will test properly. This can be done simply by
-running `cargo check` or `cargo unit-test`.
-
-## Using your project
-
-Once you have your custom repo, you should check out [Developing](./Developing.md) to explain
-more on how to run tests and develop code. Or go through the
-[online tutorial](https://docs.cosmwasm.com/) to get a better feel
-of how to develop.
-
-[Publishing](./Publishing.md) contains useful information on how to publish your contract
-to the world, once you are ready to deploy it on a running blockchain. And
-[Importing](./Importing.md) contains information about pulling in other contracts or crates
-that have been published.
-
-Please replace this README file with information about your specific project. You can keep
-the `Developing.md` and `Publishing.md` files as useful referenced, but please set some
-proper description in the README.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
