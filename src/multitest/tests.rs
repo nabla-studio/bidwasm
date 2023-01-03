@@ -127,7 +127,7 @@ fn open_auction_without_commission() {
         code_id,
         &owner,
         "Bidwasm contract",
-        &owner,
+        None,
         UATOM,
         "Supercomputer #2207 bidding",
         None,
@@ -180,13 +180,13 @@ fn owner_cannot_bid() {
 
     let code_id = BidwasmContract::store_code(&mut app);
 
-    // Instantiate contract with owner different than sender
+    // Instantiate contract
     let contract = BidwasmContract::instantiate(
         &mut app,
         code_id,
         &owner,
         "Bidwasm contract",
-        &owner,
+        None,
         UATOM,
         "Supercomputer #2207 bidding",
         500_000,
@@ -202,7 +202,7 @@ fn owner_cannot_bid() {
     // auction
     assert_eq!(
         err,
-        ContractError::InvalidAction {
+        ContractError::InvalidBid {
             owner: owner.to_string()
         }
     );
@@ -231,13 +231,13 @@ fn insufficient_funds_bid() {
 
     let code_id = BidwasmContract::store_code(&mut app);
 
-    // Instantiate contract with owner different than sender
+    // Instantiate contract
     let contract = BidwasmContract::instantiate(
         &mut app,
         code_id,
         &owner,
         "Bidwasm contract",
-        &owner,
+        None,
         UATOM,
         "Supercomputer #2207 bidding",
         500_000,
@@ -285,13 +285,13 @@ fn simple_bid_no_commission() {
 
     let code_id = BidwasmContract::store_code(&mut app);
 
-    // Instantiate contract with owner different than sender
+    // Instantiate contract
     let contract = BidwasmContract::instantiate(
         &mut app,
         code_id,
         &owner,
         "Bidwasm contract",
-        &owner,
+        None,
         UATOM,
         "Supercomputer #2207 bidding",
         0,
@@ -338,13 +338,13 @@ fn simple_bid() {
 
     let code_id = BidwasmContract::store_code(&mut app);
 
-    // Instantiate contract with owner different than sender
+    // Instantiate contract
     let contract = BidwasmContract::instantiate(
         &mut app,
         code_id,
         &owner,
         "Bidwasm contract",
-        &owner,
+        None,
         UATOM,
         "Supercomputer #2207 bidding",
         500_000,
@@ -392,13 +392,13 @@ fn close_auction() {
 
     let code_id = BidwasmContract::store_code(&mut app);
 
-    // Instantiate contract with owner different than sender
+    // Instantiate contract
     let contract = BidwasmContract::instantiate(
         &mut app,
         code_id,
         &owner,
         "Bidwasm contract",
-        &owner,
+        None,
         UATOM,
         "Supercomputer #2207 bidding",
         500_000,
@@ -444,13 +444,13 @@ fn close_auction_after_bid() {
 
     let code_id = BidwasmContract::store_code(&mut app);
 
-    // Instantiate contract with owner different than sender
+    // Instantiate contract
     let contract = BidwasmContract::instantiate(
         &mut app,
         code_id,
         &owner,
         "Bidwasm contract",
-        &owner,
+        None,
         UATOM,
         "Supercomputer #2207 bidding",
         500_000,
@@ -510,19 +510,19 @@ fn close_auction_after_bid() {
         }
     );
 
-    // sender should have not any balance
+    // sender should have the balance minus bid and commission
     assert_eq!(
         app.wrap().query_all_balances(&sender).unwrap(),
         coins(2_000_000, UATOM)
     );
 
-    // owner should have got the commission
+    // owner should have got the commission and the bid
     assert_eq!(
         app.wrap().query_all_balances(&owner).unwrap(),
         coins(2_000_000, UATOM)
     );
 
-    // contract should store bid minus commission
+    // contract should store nothing
     assert_eq!(app.wrap().query_all_balances(contract.addr()).unwrap(), &[]);
 
     // Try making another bid after closing the auction
@@ -545,13 +545,13 @@ fn invalid_close_unauthorized() {
 
     let code_id = BidwasmContract::store_code(&mut app);
 
-    // Instantiate contract with owner different than sender
+    // Instantiate contract
     let contract = BidwasmContract::instantiate(
         &mut app,
         code_id,
         &owner,
         "Bidwasm contract",
-        &owner,
+        None,
         UATOM,
         "Supercomputer #2207 bidding",
         500_000,

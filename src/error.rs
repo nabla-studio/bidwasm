@@ -10,7 +10,7 @@ pub enum ContractError {
     Unauthorized { owner: String },
 
     #[error("Invalid bid: Contract owner {owner} cannot perform this action")]
-    InvalidAction { owner: String },
+    InvalidBid { owner: String },
 
     #[error("Auction is already closed")]
     ClosedAcution,

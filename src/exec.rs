@@ -22,7 +22,7 @@ pub fn bid(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> 
 
     // Owner of the auction cannot bid
     if owner == info.sender {
-        return Err(ContractError::InvalidAction {
+        return Err(ContractError::InvalidBid {
             owner: owner.to_string(),
         });
     }
