@@ -67,6 +67,28 @@ impl BidwasmContract {
             .map(|_| ())
             .map_err(|err| err.downcast().unwrap())
     }
+
+    // Retract the funds
+    #[track_caller]
+    pub fn retract<'a>(
+        &self,
+        app: &mut App,
+        sender: &Addr,
+        recipient: impl Into<Option<&'a Addr>>,
+    ) -> Result<(), ContractError> {
+        let recipient = recipient.into();
+
+        app.execute_contract(
+            sender.clone(),
+            self.0.clone(),
+            &ExecuteMsg::Retract {
+                recipient: recipient.map(Addr::to_string),
+            },
+            &[],
+        )
+        .map(|_| ())
+        .map_err(|err| err.downcast().unwrap())
+    }
 }
 
 impl From<BidwasmContract> for Addr {

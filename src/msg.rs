@@ -17,6 +17,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Bid {},
     Close {},
+    Retract { recipient: Option<String> },
 }
 
 #[cw_serde]

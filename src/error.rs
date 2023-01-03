@@ -12,8 +12,14 @@ pub enum ContractError {
     #[error("Invalid bid: Contract owner {owner} cannot perform this action")]
     InvalidBid { owner: String },
 
+    #[error("Invalid retract: the user cannot perform this action")]
+    InvalidRetract,
+
     #[error("Auction is already closed")]
     ClosedAcution,
+
+    #[error("Auction is yet open")]
+    OpenAcution,
 
     #[error(
         "Invalid bid: Amount of token sent ({funds}) are lower than commission ({commission})"

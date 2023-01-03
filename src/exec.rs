@@ -150,3 +150,47 @@ pub fn close(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError
         .add_attribute("sender", info.sender.as_str());
     Ok(resp)
 }
+
+pub fn retract(
+    deps: DepsMut,
+    info: MessageInfo,
+    recipient: Option<String>,
+) -> Result<Response, ContractError> {
+    let status = STATE.load(deps.storage)?.current_status;
+    let denom = CONFIG.load(deps.storage)?.denom;
+
+    let mut resp = Response::new();
+
+    // If auction is yet open, then the action cannot be processed
+    if status == Status::Open {
+        return Err(ContractError::OpenAcution);
+    }
+
+    // If there is not any fund to retract, then the action cannot be processed
+    let funds = match BIDS.load(deps.storage, &info.sender) {
+        Ok(amount) => coins(amount.u128(), denom),
+        _ => return Err(ContractError::InvalidRetract),
+    };
+
+    // Retrieve recipient or use the message sender as the default value
+    let recipient = match recipient {
+        Some(recipient) => deps.api.addr_validate(&recipient)?,
+        None => info.sender.clone(),
+    };
+
+    // Create a bank message to send funds to the contract owner
+    let retract_msg = BankMsg::Send {
+        to_address: recipient.to_string(),
+        amount: funds,
+    };
+
+    // Remove the bid for the sender who is retracting right now
+    BIDS.remove(deps.storage, &recipient);
+
+    resp = resp
+        .add_message(retract_msg)
+        .add_attribute("retracting_recipient", recipient.as_str())
+        .add_attribute("action", "retract")
+        .add_attribute("sender", info.sender.as_str());
+    Ok(resp)
+}

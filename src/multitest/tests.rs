@@ -592,3 +592,224 @@ fn invalid_close_unauthorized() {
 }
 
 // END --> Close Tests
+
+// START --> Retract Tests
+
+#[test]
+fn retract() {
+    // Define participant
+    let owner = Addr::unchecked("owner");
+    let sender1 = Addr::unchecked("sender1");
+    let sender2 = Addr::unchecked("sender2");
+
+    let mut app = App::new(|router, _api, storage| {
+        router
+            .bank
+            .init_balance(storage, &sender1, coins(4_500_000, UATOM))
+            .unwrap();
+        router
+            .bank
+            .init_balance(storage, &sender2, coins(7_500_000, UATOM))
+            .unwrap();
+    });
+
+    let code_id = BidwasmContract::store_code(&mut app);
+
+    // Instantiate contract
+    let contract = BidwasmContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Bidwasm contract",
+        None,
+        UATOM,
+        "Supercomputer #2207 bidding",
+        500_000,
+    )
+    .unwrap();
+
+    // Sender1 make a bid of 4_000_000
+    contract
+        .bid(&mut app, &sender1, &coins(4_500_000, UATOM))
+        .unwrap();
+
+    // Sender2 make a bid of 7_000_000
+    contract
+        .bid(&mut app, &sender2, &coins(7_500_000, UATOM))
+        .unwrap();
+
+    // Check that the bids are registered correctly
+    let sender1_bid = BIDS
+        .query(&app.wrap(), contract.addr().clone(), &sender1)
+        .unwrap();
+
+    assert_eq!(sender1_bid, Some(Uint128::new(4_000_000)));
+
+    let sender2_bid = BIDS
+        .query(&app.wrap(), contract.addr().clone(), &sender2)
+        .unwrap();
+
+    assert_eq!(sender2_bid, Some(Uint128::new(7_000_000)));
+
+    // senders should have not any balance
+    assert_eq!(app.wrap().query_all_balances(&sender1).unwrap(), &[]);
+    assert_eq!(app.wrap().query_all_balances(&sender2).unwrap(), &[]);
+
+    // owner should have got the commission
+    assert_eq!(
+        app.wrap().query_all_balances(&owner).unwrap(),
+        coins(1_000_000, UATOM)
+    );
+
+    // contract should store bid minus commission
+    assert_eq!(
+        app.wrap().query_all_balances(contract.addr()).unwrap(),
+        coins(11_000_000, UATOM)
+    );
+
+    // Close the auction
+    contract.close(&mut app, &owner).unwrap();
+
+    // Check the status is closed
+    let state = STATE.query(&app.wrap(), contract.addr().clone()).unwrap();
+    assert_eq!(
+        state,
+        State {
+            current_status: Status::Closed,
+            highest_bid: Some((sender2.clone(), Uint128::new(7_000_000)))
+        }
+    );
+
+    // Sender1 retracting funds since sender did not win the auction
+    contract.retract(&mut app, &sender1, None).unwrap();
+
+    // Sender1 should have the original balance minus the commission for the
+    // bid
+    assert_eq!(
+        app.wrap().query_all_balances(&sender1).unwrap(),
+        coins(4_000_000, UATOM)
+    );
+
+    // Sender2 should have not any balance
+    assert_eq!(app.wrap().query_all_balances(&sender2).unwrap(), &[]);
+
+    // owner should have got the commission plus the highest bid at the time
+    // of the auction closure
+    assert_eq!(
+        app.wrap().query_all_balances(&owner).unwrap(),
+        coins(8_000_000, UATOM)
+    );
+
+    // contract should have not any balance
+    assert_eq!(app.wrap().query_all_balances(contract.addr()).unwrap(), &[]);
+}
+
+#[test]
+fn invalid_retract_by_winner() {
+    // Define participant
+    let owner = Addr::unchecked("owner");
+    let sender1 = Addr::unchecked("sender1");
+    let sender2 = Addr::unchecked("sender2");
+
+    let mut app = App::new(|router, _api, storage| {
+        router
+            .bank
+            .init_balance(storage, &sender1, coins(4_500_000, UATOM))
+            .unwrap();
+        router
+            .bank
+            .init_balance(storage, &sender2, coins(7_500_000, UATOM))
+            .unwrap();
+    });
+
+    let code_id = BidwasmContract::store_code(&mut app);
+
+    // Instantiate contract
+    let contract = BidwasmContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Bidwasm contract",
+        None,
+        UATOM,
+        "Supercomputer #2207 bidding",
+        500_000,
+    )
+    .unwrap();
+
+    // Sender1 make a bid of 4_000_000
+    contract
+        .bid(&mut app, &sender1, &coins(4_500_000, UATOM))
+        .unwrap();
+
+    // Sender2 make a bid of 7_000_000
+    contract
+        .bid(&mut app, &sender2, &coins(7_500_000, UATOM))
+        .unwrap();
+
+    // Close the auction
+    contract.close(&mut app, &owner).unwrap();
+
+    // Sender2 tries retracting funds even if he won the auction
+    let err = contract.retract(&mut app, &sender2, None).unwrap_err();
+
+    // Verify that the contract fails
+    assert_eq!(err, ContractError::InvalidRetract);
+}
+
+#[test]
+fn invalid_double_retract() {
+    // Define participant
+    let owner = Addr::unchecked("owner");
+    let sender1 = Addr::unchecked("sender1");
+    let sender2 = Addr::unchecked("sender2");
+
+    let mut app = App::new(|router, _api, storage| {
+        router
+            .bank
+            .init_balance(storage, &sender1, coins(4_500_000, UATOM))
+            .unwrap();
+        router
+            .bank
+            .init_balance(storage, &sender2, coins(7_500_000, UATOM))
+            .unwrap();
+    });
+
+    let code_id = BidwasmContract::store_code(&mut app);
+
+    // Instantiate contract
+    let contract = BidwasmContract::instantiate(
+        &mut app,
+        code_id,
+        &owner,
+        "Bidwasm contract",
+        None,
+        UATOM,
+        "Supercomputer #2207 bidding",
+        500_000,
+    )
+    .unwrap();
+
+    // Sender1 make a bid of 4_000_000
+    contract
+        .bid(&mut app, &sender1, &coins(4_500_000, UATOM))
+        .unwrap();
+
+    // Sender2 make a bid of 7_000_000
+    contract
+        .bid(&mut app, &sender2, &coins(7_500_000, UATOM))
+        .unwrap();
+
+    // Close the auction
+    contract.close(&mut app, &owner).unwrap();
+
+    // Sender1 retract funds since he did not win the auction
+    contract.retract(&mut app, &sender1, None).unwrap();
+
+    // Sender1 tries retracting again the funds even if he already retract them
+    let err = contract.retract(&mut app, &sender2, None).unwrap_err();
+
+    // Verify that the contract fails
+    assert_eq!(err, ContractError::InvalidRetract);
+}
+// END --> Retract Tests
